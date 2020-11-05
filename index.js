@@ -154,6 +154,8 @@ module.exports = function(app) {
                 params.Tagging = options.s3_tags;
             }
 
+            trace(`starting upload of ${path} to ${params.Bucket}/${params.Key}`);
+
             s3.putObject(params, function(err, data) {
                 if (err) {
                     debug(err);
@@ -233,7 +235,7 @@ module.exports = function(app) {
                 s3_key_prefix: {
                     type: 'string',
                     title: 'Optional prefix for all S3 keys',
-                    description: 'signalk-timestream/'
+                    description: 'ex: signalk-timeseries/'
                 },
                 s3_tags: {
                     type: 'string',
