@@ -28,6 +28,7 @@ const batcher = require('signalk-to-batch-points');
 
 module.exports = function(app) {
     let _batcher = batcher(app);
+    let _sweeper_interval;
 
     let _ensure_directory_exists = function(dir) {
         if (!fs.existsSync(dir)) {
@@ -159,12 +160,53 @@ module.exports = function(app) {
             s3.putObject(params, function(err, data) {
                 if (err) {
                     debug(err);
-                } else if (options.rm_after_upload) {
+                } else {
+                    trace(`upload of ${path} done`);
+
+                    // we've uploaded to s3, so we can delete locally
                     fs.unlink(path, function() {});
                 }
-
-                trace(`upload of ${path} done`);
             });
+        });
+    };
+
+    let _sweeper = function(options) {
+        trace('running _sweeper');
+        fs.readdir(options.directory, function(err, files) {
+            if (err) {
+                debug(`_sweeper error ${err}`);
+                return;
+            }
+
+            const should_upload_file = function() {
+                const now = Date.now();
+                // only consider the file eligible for the sweeper when it's
+                // been sitting around for 10x the write_interval (which is in
+                // s, so we need to convert to ms)
+                const min_elapsed_ms = options.write_interval * 1000 * 10;
+
+                return function(filename) {
+                    // check to ensure the file is old, to avoid races with a
+                    // regular upload
+                    const elapsed_ms = now - new Date(filename);
+                    return elapsed_ms >= min_elapsed_ms;
+                };
+            }();
+
+            // we're only interested in gzipped files
+            files = files.filter(f => f.endsWith('.gz'));
+            // remove the gzip extension (as _upload puts it back, and we need
+            // to remote it to calculate the elapsed time)
+            files = files.map(f => f.substr(0, f.length - 3));
+            // find the files whose time has elapsed
+            files = files.filter(should_upload_file);
+
+            trace(`_sweeper uploading files: ${files}`);
+
+            // TODO: we'll continue trying to upload a file forever, perhaps I
+            // need a dead-letter queue of some sort?
+            // upload those files
+            files.map(function(f) { _upload(options, f); });
         });
     };
 
@@ -174,6 +216,15 @@ module.exports = function(app) {
 
         // start the work
         _batcher.start(options, _publish_batch(options));
+
+        // start the sweeper to catch files we missed uploading to S3 during
+        // connectivity hiccups
+        if (options.s3_bucket) {
+            const ten_minutes_in_ms = 10 * 60 * 1000;
+            _sweeper_interval = setInterval(function() {
+                _sweeper(options);
+            }, ten_minutes_in_ms);
+        }
     };
 
     let _stop = function(options) {
@@ -182,9 +233,13 @@ module.exports = function(app) {
         // stop the work
         _batcher.stop(options);
 
+        // stop the sweeper
+        if (_sweeper_interval) {
+            clearInterval(_sweeper_interval);
+        }
+
         // clean up the state
-        _database_name = undefined;
-        _table_name = undefined;
+        _sweeper_interval = undefined;
     };
 
     const _plugin = {
@@ -241,11 +296,6 @@ module.exports = function(app) {
                     type: 'string',
                     title: 'S3 tags for uploaded objects',
                     description: 'tag1=value1&tag2=value2'
-                },
-                rm_after_upload: {
-                    type: 'boolean',
-                    title: 'Remove local file after upload to S3',
-                    default: false
                 }
             }
         },
