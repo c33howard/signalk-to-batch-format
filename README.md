@@ -32,22 +32,43 @@ compression was also an issue.
 
 Signalk to signalk.  I tried a signalk on the boat and a signalk in the cloud,
 but I ruled that out, because connectivity gaps meant that I missed data.
+Additionally, CSVs led to much less data transfer, even after compressing both.
 
 AWS IOT or MQTT.  I ruled that out, because of how the data was transformed to
-MQTT and sent immediately, which led to *much* higher data transfer.  This can
-deal with connectivity gaps with a local buffer on the boat.
+MQTT and sent immediately, which led to *much* higher data transfer.  Each
+data point was sent as a complete message, including both the path and the
+data value.  The real savings from the CSV approach is due to the batching,
+and sending each path once per-batch.  The MQTT can deal with connectivity gaps
+with a local buffer on the boat, and indeed, AWS IOT does this by default.
 
 # Bigger Picture
 
-My setup is my local signalk runs and procduces CSVs.  These are uploaded to
-S3.  I've setup a notification running in Lambda that sees new files being
-written to S3, the lambda script downloads the file from S3, parses it, writes
-to Timestream, then deletes from S3.
+My setup is that I have a signalk on a raspberry pi running on my boat which
+procduces CSVs.  These are uploaded to S3.  S3 is configured to send an SNS
+notification on new object upload.  I have a lambda script connected to that
+notification (see signalk-to-timestream-lambda) that writes the batch to
+Timestream.  Additionally, I put the SNS message in an SQS queue, so that a
+signalk instance running on an EC2 instance can replicate the data (see
+signalk-from-csv).  This allows me to do things like anchor watch when I'm
+away from the boat.
+
+Because I have two consumers of the files in S3 (Lambda and signalk), I can't
+let either one delete the file in S3 upon completion, so I'm relying on an S3
+lifecycle policy to delete the files after 24 hours.  This implies that my
+playback window is 24hrs.
 
 An HTTP PUT of the CSVs to a web server that does the write to Timestream would
 also work, but S3 is more highly available, and one file per-minute fits
 comfortably within the Lambda free-tier, so S3 ends up being both more
 available and cheaper.
+
+As far as costs go, my AWS bill for the project is around $3/month.  This is
+mostly $2/month for Timestream and $1/month for KMS, because I'm using my own
+key, instead of an AWS provided key.  I'll probably migrate to using an AWS
+provided key.  My usage fits within the Lambda, and SQS free tiers, and SNS
+costs $0.01/month.  I'm reusing an EC2 instance I already had for signalk
+in the cloud and the S3 storage costs are neglible (but again, blended with
+some existing S3 usage, so I can't be too precise.)
 
 # Setup
 
