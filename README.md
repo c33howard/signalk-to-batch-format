@@ -41,6 +41,17 @@ data value.  The real savings from the CSV approach is due to the batching,
 and sending each path once per-batch.  The MQTT can deal with connectivity gaps
 with a local buffer on the boat, and indeed, AWS IOT does this by default.
 
+# What are the Downsides?
+
+Source data is lost in the to/from CSV transformation.  This is the big one.
+If the goal is to put the data into a timeseries database, that's probably
+fine, since you likely don't want the source data anyway.
+
+This doesn't deal too well with values that are objects.  I've special cased
+the ones that affect me and there's nothing preventing more special casing.
+But, as far as I can tell, the signalk specification doesn't provide a good
+way to generically deal with these types, on the import side at least.
+
 # Bigger Picture
 
 My setup is that I have a signalk on a raspberry pi running on my boat which
