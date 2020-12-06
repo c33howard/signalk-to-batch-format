@@ -71,12 +71,24 @@ module.exports = function(app) {
         const header = batch_of_points.header.reduce(function(acc, v) {
             return `${acc},${v}`;
         });
-        os.write(`path,${header}\n`);
+        if (options.sources) {
+            os.write(`path,source,${header}\n`);
+        } else {
+            os.write(`path,${header}\n`);
+        }
 
         // write columns
-        for (const [name, points] of Object.entries(batch_of_points.data)) {
+        for (const [key, points] of Object.entries(batch_of_points.data)) {
+            const key_tokens = key.split('|');
+            const name = key_tokens[0];
+            const source = key_tokens[1];
+
             // row header
             os.write(`"${name}"`);
+
+            if (options.sources) {
+                os.write(`,"${source}"`);
+            }
 
             // points, with each one representing one interval
             points.forEach(value => {
@@ -251,6 +263,12 @@ module.exports = function(app) {
             type: 'object',
             required: ['directory'],
             properties: {
+                sources: {
+                    type: 'boolean',
+                    title: 'Include source information in CSV file',
+                    description: 'This option must be true if you want to log the same data from multiple sources',
+                    default: false
+                },
                 directory: {
                     type: 'string',
                     title: 'Directory to write files to',
