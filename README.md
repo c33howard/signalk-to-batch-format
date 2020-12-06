@@ -28,7 +28,7 @@ a binary format, but this compresses so well, it's not worth the complexity.
 
 Direct write to Timestream, because there isn't a good way to get the latest
 data most of the time, but get backfills after lost connectivity.  Data
-compression was also an issue.
+compression was also an issue for LTE usage.
 
 Signalk to signalk.  I tried a signalk on the boat and a signalk in the cloud,
 but I ruled that out, because connectivity gaps meant that I missed data.
@@ -43,14 +43,15 @@ with a local buffer on the boat, and indeed, AWS IOT does this by default.
 
 # What are the Downsides?
 
-Source data is lost in the to/from CSV transformation.  This is the big one.
-If the goal is to put the data into a timeseries database, that's probably
-fine, since you likely don't want the source data anyway.
-
 This doesn't deal too well with values that are objects.  I've special cased
 the ones that affect me and there's nothing preventing more special casing.
 But, as far as I can tell, the signalk specification doesn't provide a good
 way to generically deal with these types, on the import side at least.
+
+The current setup assumes that all data points are present and emitting for
+the entire time window that is represented by the CSV file.  As a result,
+if you have devices that frequently come and go, then this plugin will not
+work well.  This is probably fixable, but would require some major surgery.
 
 # Bigger Picture
 
@@ -61,7 +62,10 @@ notification (see signalk-to-timestream-lambda) that writes the batch to
 Timestream.  Additionally, I put the SNS message in an SQS queue, so that a
 signalk instance running on an EC2 instance can replicate the data (see
 signalk-from-csv).  This allows me to do things like anchor watch when I'm
-away from the boat.
+away from the boat.  I could connect my phone to the signalk on the boat, but
+then I'd have to expose the signalk to the outside world, and I'd have a
+variable amount of data transfer from the boat.  This approach keeps the data
+transfer constant.
 
 Because I have two consumers of the files in S3 (Lambda and signalk), I can't
 let either one delete the file in S3 upon completion, so I'm relying on an S3
@@ -112,6 +116,11 @@ contacts will be persisted.  AIS contacts add a *lot* more data to store and
 transfer.)
 
 The configuration consists of the following parameters:
+
+- __Sources__: If this is true, then the $source name is written to the CSV (but
+  not the full source object that $source refers to).  This must be true if you
+  have multiple devices that emit the same signalk path and you want to see
+  both.
 
 - __Directory__: The local directory where CSV files will be written.
 
