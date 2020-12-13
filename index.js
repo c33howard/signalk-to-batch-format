@@ -46,13 +46,8 @@ module.exports = function(app) {
         return value;
     };
 
-    let _write_csv = function(options, batch_of_points) {
-        if (!batch_of_points.header) {
-            trace(`nothing to write`);
-            return;
-        }
-
-        const filename = new Date(batch_of_points.header[0]).toISOString();
+    let _write_file = function(options, batch_of_points) {
+        const filename = `${batch_of_points.timestamp}.json`;
 
         // start with the file as a tmp file, then rename when done
         const path = `${options.directory}/${filename}.gz`;
@@ -67,41 +62,9 @@ module.exports = function(app) {
         // use "os" (for output stream) as the write end of the stream
         const os = gzip;
 
-        // write header
-        const header = batch_of_points.header.reduce(function(acc, v) {
-            return `${acc},${v}`;
-        });
-        if (options.sources) {
-            os.write(`path,source,${header}\n`);
-        } else {
-            os.write(`path,${header}\n`);
-        }
-
-        // write columns
-        for (const [key, points] of Object.entries(batch_of_points.data)) {
-            const key_tokens = key.split('|');
-            const name = key_tokens[0];
-            const source = key_tokens[1];
-
-            // row header
-            os.write(`"${name}"`);
-
-            if (options.sources) {
-                os.write(`,"${source}"`);
-            }
-
-            // points, with each one representing one interval
-            points.forEach(value => {
-                // format value for serialization
-                value = _format_value(value);
-
-                // now write to file
-                os.write(`,${value}`);
-            });
-
-            // finish the row
-            os.write('\n');
-        }
+        // write file
+        os.write(JSON.stringify(batch_of_points));
+        os.write('\n');
 
         // after we're done writing, atomically rename into place and maybe upload
         os.on('finish', function() {
@@ -127,7 +90,7 @@ module.exports = function(app) {
             trace(`_publish_batch`);
 
             try {
-                _write_csv(options, batch_of_points);
+                _write_file(options, batch_of_points);
             } catch (e) {
                 // TODO: how to handle error?
                 debug(e);
@@ -273,13 +236,13 @@ module.exports = function(app) {
                     type: 'string',
                     title: 'Directory to write files to',
                 },
-                update_interval: {
+                get_interval: {
                     type: 'number',
                     title: 'Frequency to list signalk state (in seconds)',
                     description: 'Each column in the csv represents how many seconds',
                     default: 1
                 },
-                write_interval: {
+                publish_interval: {
                     type: 'number',
                     title: 'Frequency to write files (in seconds)',
                     default: 60
