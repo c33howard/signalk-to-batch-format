@@ -156,9 +156,9 @@ module.exports = function(app) {
             const should_upload_file = function() {
                 const now = Date.now();
                 // only consider the file eligible for the sweeper when it's
-                // been sitting around for 10x the write_interval (which is in
+                // been sitting around for 10x the publish_interval (which is in
                 // s, so we need to convert to ms)
-                const min_elapsed_ms = options.write_interval * 1000 * 10;
+                const min_elapsed_ms = options.publish_interval * 1000 * 10;
 
                 return function(filename) {
                     // check to ensure the file is old, to avoid races with a
