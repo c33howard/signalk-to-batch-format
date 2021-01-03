@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-const debug = require('debug')('signalk-to-csv');
-const trace = require('debug')('signalk-to-csv:trace');
+const debug = require('debug')('signalk-to-batch-format');
+const trace = require('debug')('signalk-to-batch-format:trace');
 
 const _ = require('lodash');
 const aws = require('aws-sdk');
@@ -218,32 +218,28 @@ module.exports = function(app) {
     };
 
     const _plugin = {
-        id: 'signalk-to-csv',
-        name: 'CSV logger',
+        id: 'signalk-to-batch-format',
+        name: 'Batch format writer',
         description: 'SignalK server plugin that writes batched compressed json files to disk',
 
         schema: {
             type: 'object',
             required: ['directory'],
             properties: {
-                sources: {
-                    type: 'boolean',
-                    title: 'Include source information in CSV file',
-                    description: 'This option must be true if you want to log the same data from multiple sources',
-                    default: false
-                },
                 directory: {
                     type: 'string',
                     title: 'Directory to write files to',
                 },
                 get_interval: {
                     type: 'number',
-                    title: 'Frequency to list signalk state (in seconds)',
+                    title: 'Update Interval',
+                    description: 'Frequency to list signalk state (in seconds)',
                     default: 1
                 },
                 publish_interval: {
                     type: 'number',
-                    title: 'Frequency to write files (in seconds)',
+                    title: 'Publish Interval',
+                    description: 'Frequency to publish/write files (in seconds)',
                     default: 60
                 },
                 filter_list_type: {
