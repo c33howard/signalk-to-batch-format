@@ -123,7 +123,7 @@ module.exports = function(app) {
                 Key: `${options.s3_key_prefix}${filename}.gz`,
                 ContentMD5: md5,
                 ContentEncoding: 'gzip',
-                ContentType: 'text/csv'
+                ContentType: 'application/json'
             };
 
             if (options.s3_tags) {
@@ -220,7 +220,7 @@ module.exports = function(app) {
     const _plugin = {
         id: 'signalk-to-csv',
         name: 'CSV logger',
-        description: 'SignalK server plugin that writes compressed csv files to disk',
+        description: 'SignalK server plugin that writes batched compressed json files to disk',
 
         schema: {
             type: 'object',
@@ -239,7 +239,6 @@ module.exports = function(app) {
                 get_interval: {
                     type: 'number',
                     title: 'Frequency to list signalk state (in seconds)',
-                    description: 'Each column in the csv represents how many seconds',
                     default: 1
                 },
                 publish_interval: {
@@ -266,7 +265,7 @@ module.exports = function(app) {
                 },
                 s3_bucket: {
                     type: 'string',
-                    title: 'S3 bucket to upload completed csv to'
+                    title: 'S3 bucket to upload completed json'
                 },
                 s3_key_prefix: {
                     type: 'string',
