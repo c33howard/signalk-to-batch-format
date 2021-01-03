@@ -78,14 +78,27 @@ would also work, but S3 is more highly available, and one file per-minute fits
 comfortably within the Lambda free-tier, so S3 ends up being both more
 available and cheaper.
 
-As far as costs go, my AWS bill for the project is around $4/month.  This is
-mostly $2/month for Timestream data ingestion and $2/month for a grafana alarm
-that is constantly querying Timestream.  If you're ad-hoc rendering a
-dashboard, then the query cost would be close to $0.  My usage fits within the
-Lambda, and SQS free tiers, and SNS costs $0.01/month.  I'm reusing an EC2
-instance I already had for signalk in the cloud and the S3 storage costs are
-neglible (but again, blended with some existing S3 usage, so I can't be too
-precise.)
+# Metrics
+
+I have about 80 different data points being produced from signalk.  I take a
+sample every 5s and produce a file every 1m.  Each comporessed json file
+averages about 5.7KB.  That's around 250MB data transfer per-month, which is
+well within my LTE monthly budget.
+
+As far as costs go, my AWS bill for the project is around $4/month, almost all
+of which is Timestream.  I'm paying $2/month for Timestream data ingestion and
+$2/month for a grafana alarm that is constantly querying Timestream.  When I
+was just ad-hoc rendering the dashboard, rather than constantly querying it for
+alarming purposes, the query cost was almost $0.  My usage fits within the
+Lambda, and SQS free tiers, and SNS costs $0.01/month.  The S3 costs are in the
+$0.20 ballpark, as costs are dominated by requests, not storage.
+
+I'm reusing an EC2 instance (t3a.small) I already had for signalk in the cloud.
+I'm still running influxdb there, which I may turn off.  That's all on the same
+instance, so the incremental cost is $0.  I like using the hosted Timestream,
+since I trust it to not lose my data more than I trust myself, but if you have
+a cloud instance already, then your monthly costs will be closer to $0.25/month
+plus whatever instance you're using.
 
 # Setup
 
