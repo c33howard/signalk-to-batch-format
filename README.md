@@ -82,8 +82,9 @@ available and cheaper.
 
 I have about 80 different data points being produced from signalk.  I take a
 sample every 5s and produce a file every 1m.  Each comporessed json file
-averages about 5.7KB.  That's around 250MB data transfer per-month, which is
-well within my LTE monthly budget.
+averages about 6.7KB.  That's around 300MB data transfer per-month, which is
+well within my LTE monthly budget.  Note that data transfer in to AWS is free,
+the data transfer limits are my own due to the LTE data plan.
 
 As far as costs go, my AWS bill for the project is around $4/month, almost all
 of which is Timestream.  I'm paying $2/month for Timestream data ingestion and
