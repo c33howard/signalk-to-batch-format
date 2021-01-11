@@ -24,7 +24,7 @@ const zlib = require('zlib');
 
 const s3 = new aws.S3();
 
-const batcher = require('signalk-batcher');
+const batcher = require('signalk-batcher').to_batch;
 
 module.exports = function(app) {
     let _batcher = batcher(app);
