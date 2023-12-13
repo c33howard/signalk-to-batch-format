@@ -163,7 +163,13 @@ module.exports = function(app) {
                 return function(filename) {
                     // check to ensure the file is old, to avoid races with a
                     // regular upload
-                    const elapsed_ms = now - new Date(filename);
+
+                    // filenames are "${timestamp}.json.gz" (see _write_file())
+                    // and we want to extract the timestamp.  The calling code
+                    // has already stripped ".gz", but we need to strip ".json"
+                    // in order to do date math.
+                    const timestamp_from_filename = filename.substr(0, filename.length - 5);
+                    const elapsed_ms = now - new Date(timestamp_from_filename);
                     return elapsed_ms >= min_elapsed_ms;
                 };
             }();
