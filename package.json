@@ -1,6 +1,6 @@
 {
   "name": "signalk-to-batch-format",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Signal K server plugin that logs data over time to a compressed batched json format",
   "main": "index.js",
   "repository": "https://github.com/c33howard/signalk-to-batch-format.git",
