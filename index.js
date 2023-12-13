@@ -202,9 +202,17 @@ module.exports = function(app) {
         // connectivity hiccups
         if (options.s3_bucket) {
             const ten_minutes_in_ms = 10 * 60 * 1000;
-            _sweeper_interval = setInterval(function() {
-                _sweeper(options);
-            }, ten_minutes_in_ms);
+            // the following is equivalent to setInterval(), but ensures that
+            // slow iterations (due to a large backlog of files for the
+            // sweeper) don't lead to concurrent invocations
+            // https://developer.mozilla.org/en-US/docs/Web/API/setInterval#ensure_that_execution_duration_is_shorter_than_interval_frequency
+            (function loop() {
+                _sweeper_interval = setTimeout(() => {
+                    _sweeper(options);
+
+                    loop();
+                }, ten_minutes_in_ms);
+            })();
         }
     };
 
@@ -216,7 +224,7 @@ module.exports = function(app) {
 
         // stop the sweeper
         if (_sweeper_interval) {
-            clearInterval(_sweeper_interval);
+            clearTimeout(_sweeper_interval);
         }
 
         // clean up the state
