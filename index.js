@@ -17,14 +17,14 @@ const debug = require('debug')('signalk-to-batch-format');
 const trace = require('debug')('signalk-to-batch-format:trace');
 
 const _ = require('lodash');
-const aws = require('aws-sdk');
 const crypt = require('crypto');
 const fs = require('fs');
 const zlib = require('zlib');
 
-const s3 = new aws.S3();
+const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 
 const batcher = require('signalk-batcher').to_batch;
+const s3_client = new S3Client();
 
 module.exports = function(app) {
     let _batcher = batcher(app);
@@ -132,16 +132,18 @@ module.exports = function(app) {
 
             trace(`starting upload of ${path} to ${params.Bucket}/${params.Key}`);
 
-            s3.putObject(params, function(err, data) {
-                if (err) {
-                    debug(err);
-                } else {
+            const cmd = new PutObjectCommand(params);
+            s3_client
+                .send(cmd)
+                .then((data) => {
                     trace(`upload of ${path} done`);
 
                     // we've uploaded to s3, so we can delete locally
                     fs.unlink(path, function() {});
-                }
-            });
+                })
+                .catch((err) => {
+                    debug(err);
+                });
         });
     };
 

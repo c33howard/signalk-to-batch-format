@@ -1,6 +1,6 @@
 {
   "name": "signalk-to-batch-format",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Signal K server plugin that logs data over time to a compressed batched json format",
   "main": "index.js",
   "repository": "https://github.com/c33howard/signalk-to-batch-format.git",
@@ -12,7 +12,7 @@
   "dependencies": {
     "debug": "^2.2.0",
     "lodash": "^4.17.4",
-    "aws-sdk": "^2.764.0",
+    "@aws-sdk/client-s3": "3",
     "signalk-batcher": "^1.1.1"
   }
 }
