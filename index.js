@@ -24,7 +24,6 @@ const zlib = require('zlib');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const { defaultProvider } = require("@aws-sdk/credential-provider-node");
 const batcher = require('signalk-batcher').to_batch;
-const s3_client = new S3Client();
 
 module.exports = function(app) {
     let _batcher = batcher(app);
