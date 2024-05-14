@@ -22,7 +22,7 @@ const fs = require('fs');
 const zlib = require('zlib');
 
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
-
+const { defaultProvider } = require("@aws-sdk/credential-provider-node");
 const batcher = require('signalk-batcher').to_batch;
 const s3_client = new S3Client();
 
@@ -93,7 +93,7 @@ module.exports = function(app) {
                 _write_file(options, batch_of_points);
             } catch (e) {
                 // TODO: how to handle error?
-                debug(e);
+                debug('Error writing file: ' + JSON.stringify(e, null, 2));
             }
         };
     };
@@ -110,7 +110,7 @@ module.exports = function(app) {
 
         fs.readFile(path, function(err, data) {
             if (err) {
-                debug(err);
+                debug('Error reading file: ' + JSON.stringify(err, null, 2));
                 return;
             }
 
@@ -131,9 +131,16 @@ module.exports = function(app) {
             }
 
             trace(`starting upload of ${path} to ${params.Bucket}/${params.Key}`);
-
+            const s3_client_local = new S3Client({
+        		credentials: defaultProvider({
+                    clientConfig: {
+                        maxRetries: 3,
+                    },
+                    ignoreCache: true,
+                })
+            });
             const cmd = new PutObjectCommand(params);
-            s3_client
+            s3_client_local
                 .send(cmd)
                 .then((data) => {
                     trace(`upload of ${path} done`);
@@ -142,7 +149,7 @@ module.exports = function(app) {
                     fs.unlink(path, function() {});
                 })
                 .catch((err) => {
-                    debug(err);
+                    debug('Error uploading to S3: ' + JSON.stringify(err, null, 2));
                 });
         });
     };
