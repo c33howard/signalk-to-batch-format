@@ -21,23 +21,23 @@ const crypt = require('crypto');
 const fs = require('fs');
 const zlib = require('zlib');
 
-const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
-const { defaultProvider } = require("@aws-sdk/credential-provider-node");
+const {S3Client, PutObjectCommand} = require('@aws-sdk/client-s3');
+const {defaultProvider} = require("@aws-sdk/credential-provider-node");
 const batcher = require('signalk-batcher').to_batch;
 
-module.exports = function(app) {
+module.exports = function (app) {
     let _batcher = batcher(app);
     let _sweeper_interval;
 
-    let _ensure_directory_exists = function(dir) {
+    let _ensure_directory_exists = function (dir) {
         if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
+            fs.mkdirSync(dir, {recursive: true});
         }
     };
 
-    let _format_value = function(value) {
+    let _format_value = function (value) {
         // escape " as ""
-        if (typeof(value) === 'string') {
+        if (typeof (value) === 'string') {
             value = value.replace(/"/g, '""');
             value = `"${value}"`;
         }
@@ -45,7 +45,7 @@ module.exports = function(app) {
         return value;
     };
 
-    let _write_file = function(options, batch_of_points) {
+    let _write_file = function (options, batch_of_points) {
         const filename = `${batch_of_points.timestamp}.json`;
 
         // start with the file as a tmp file, then rename when done
@@ -55,7 +55,7 @@ module.exports = function(app) {
         // write to this file
         const file_stream = fs.createWriteStream(tmp_path);
         // but gzip, so connect the streams
-        const gzip = zlib.createGzip({ level: zlib.constants.Z_BEST_COMPRESSION });
+        const gzip = zlib.createGzip({level: zlib.constants.Z_BEST_COMPRESSION});
         gzip.pipe(file_stream);
 
         // use "os" (for output stream) as the write end of the stream
@@ -66,8 +66,8 @@ module.exports = function(app) {
         os.write('\n');
 
         // after we're done writing, atomically rename into place and maybe upload
-        os.on('finish', function() {
-            fs.rename(tmp_path, path, function(err) {
+        os.on('finish', function () {
+            fs.rename(tmp_path, path, function (err) {
                 if (err) {
                     debug(`could not rename ${tmp_path} to ${path}`);
                 }
@@ -82,10 +82,10 @@ module.exports = function(app) {
         os.end();
     };
 
-    let _publish_batch = function(options) {
+    let _publish_batch = function (options) {
         _ensure_directory_exists(options.directory);
 
-        return function(batch_of_points) {
+        return function (batch_of_points) {
             trace(`_publish_batch`);
 
             try {
@@ -97,17 +97,17 @@ module.exports = function(app) {
         };
     };
 
-    let _upload = function(options, filename) {
+    let _upload = function (options, filename) {
         const path = `${options.directory}/${filename}.gz`;
 
-        let _get_md5 = function(file) {
+        let _get_md5 = function (file) {
             var hash = crypt.createHash('md5')
                 .update(file)
                 .digest('base64');
             return hash;
         }
 
-        fs.readFile(path, function(err, data) {
+        fs.readFile(path, function (err, data) {
             if (err) {
                 debug('Error reading file: ' + JSON.stringify(err, null, 2));
                 return;
@@ -131,7 +131,7 @@ module.exports = function(app) {
 
             trace(`starting upload of ${path} to ${params.Bucket}/${params.Key}`);
             const s3_client_local = new S3Client({
-        		credentials: defaultProvider({
+                credentials: defaultProvider({
                     clientConfig: {
                         maxRetries: 3,
                     },
@@ -145,7 +145,8 @@ module.exports = function(app) {
                     trace(`upload of ${path} done`);
 
                     // we've uploaded to s3, so we can delete locally
-                    fs.unlink(path, function() {});
+                    fs.unlink(path, function () {
+                    });
                 })
                 .catch((err) => {
                     debug('Error uploading to S3: ' + JSON.stringify(err, null, 2));
@@ -153,22 +154,22 @@ module.exports = function(app) {
         });
     };
 
-    let _sweeper = function(options) {
+    let _sweeper = function (options) {
         trace('running _sweeper');
-        fs.readdir(options.directory, function(err, files) {
+        fs.readdir(options.directory, function (err, files) {
             if (err) {
                 debug(`_sweeper error ${err}`);
                 return;
             }
 
-            const should_upload_file = function() {
+            const should_upload_file = function () {
                 const now = Date.now();
                 // only consider the file eligible for the sweeper when it's
                 // been sitting around for 10x the publish_interval (which is in
                 // s, so we need to convert to ms)
                 const min_elapsed_ms = options.publish_interval * 1000 * 10;
 
-                return function(filename) {
+                return function (filename) {
                     // check to ensure the file is old, to avoid races with a
                     // regular upload
 
@@ -195,11 +196,13 @@ module.exports = function(app) {
             // TODO: we'll continue trying to upload a file forever, perhaps I
             // need a dead-letter queue of some sort?
             // upload those files
-            files.map(function(f) { _upload(options, f); });
+            files.map(function (f) {
+                _upload(options, f);
+            });
         });
     };
 
-    let _start = function(options) {
+    let _start = function (options) {
         debug('starting');
         _directory = options.directory;
 
@@ -224,7 +227,7 @@ module.exports = function(app) {
         }
     };
 
-    let _stop = function(options) {
+    let _stop = function (options) {
         debug('stopping');
 
         // stop the work
